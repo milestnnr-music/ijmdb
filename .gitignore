@@ -1,0 +1,18 @@
+# Python caches
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local secrets
+.env
+frontend/.streamlit/secrets.toml
+
+# macOS
+.DS_Store
+
+# Temporary CSV extracts, kept on this machine
+flatfiles/
