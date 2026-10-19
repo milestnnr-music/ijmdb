@@ -43,7 +43,7 @@ streamlit run app.py
 
 Open **http://localhost:8501** in a browser.
 
-## Hand-the-laptop demo
+## Try it out
 
 - Start MySQL and run `./start_ijmdb.sh` before handing over the machine.
 - Use fullscreen in the browser; disable sleep while demoing.
@@ -58,4 +58,4 @@ Open **http://localhost:8501** in a browser.
 | `queries/guided.py` | Parameterized SQL from `../queries.sql` |
 | `.streamlit/secrets.toml` | Local DB credentials (gitignored) |
 
-See **`plan.md`** for the full learning guide and architecture notes.
+See **`plan.md`** for the plan used by Cursor agent, and it's step by step explanations.

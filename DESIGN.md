@@ -1,6 +1,6 @@
-# CS50 SQL Final Project - Miles Tanner
+# IJMDB Database Design
 
-Please check out the video here:
+Please check out the demo video here:
 [https://youtu.be/TR439ZfOyf8](https://youtu.be/TR439ZfOyf8)
 
 ## Abstract

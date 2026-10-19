@@ -1,4 +1,4 @@
-# Local Streamlit app for IJMDB (hand-the-laptop demo)
+# Local Streamlit app for IJMDB
 
 ## Implementation status
 
