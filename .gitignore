@@ -16,16 +16,6 @@ frontend/.streamlit/secrets.toml
 
 # Temporary CSV extracts, kept on this machine
 flatfiles/
+ids/
 
-submit50:
-  files: &submit50_files
-    - !exclude "__pycache__"
-    - !exclude "node_modules"
-    - !exclude "venv"
-    - !require DESIGN.md
-    - !require schema.sql
-    - !require queries.sql
-  style: false
-
-check50:
-  files: *submit50_files
+CS50 SQL FP Video/
