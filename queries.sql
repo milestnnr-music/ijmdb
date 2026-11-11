@@ -1,3 +1,6 @@
+-- SQLite schema for ijmdb
+PRAGMA foreign_keys = ON;
+
 -- Common queries:
 
 -- Which albums did 'x' musician record/was the bandleader on?
@@ -104,7 +107,8 @@ JOIN `temp_recorded_by`
 ON `musicians`.`entity_id` = `temp_recorded_by`.`musician_id`
 LEFT JOIN `albums`
 ON `albums`.`entity_id` = `temp_recorded_by`.`album_id`
-ORDER BY `album_id`;
+ORDER BY `album_id`
+WHERE `albums`.`id` IS NOT NULL;
 
 INSERT INTO `recorded_on`
 SELECT `albums`.`id` AS `album_id`, `labels`.`id` AS `label_id`
@@ -125,8 +129,4 @@ ON `instruments`.`entity_id` = `temp_played`.`instrument_id`
 ORDER BY `musician_id`;
 
 -- Can't forget to optimize the tables!
-OPTIMIZE TABLE `musicians`;
-OPTIMIZE TABLE `albums`;
-OPTIMIZE TABLE `labels`;
-OPTIMIZE TABLE `instruments`;
-
+VACUUM;
