@@ -17,15 +17,31 @@ flatfile_to_df()
 Take a flat file that contains all record information returned by Wikidata requests, return a pandas DataFrame.
 
 df_to_db()
-Wraps the to_sql pandas function to automatically connect with the MySQL DB.
+Wraps the to_sql pandas function to automatically connect with the SQLite DB.
 
 """
 import csv
-import pandas
-import numpy as np
-from sqlalchemy import create_engine
+from pathlib import Path
 
-DB_URI = "mysql+pymysql://root:@localhost:3306/ijmdb"
+import numpy as np
+import pandas
+from sqlalchemy import create_engine, event
+
+_ROOT = Path(__file__).resolve().parents[1]
+DB_URI = f"sqlite:///{_ROOT / 'ijmdb.db'}"
+
+
+def _make_engine(*, echo: bool = False):
+    """Create a SQLAlchemy engine with SQLite foreign-key enforcement enabled."""
+    engine = create_engine(DB_URI, echo=echo)
+
+    @event.listens_for(engine, "connect")
+    def _enable_foreign_keys(dbapi_conn, _connection_record):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    return engine
 
 
 def make_junction(infile: str, outfile: str, fieldname: str) -> None:
@@ -131,11 +147,9 @@ def flatfile_to_df(file: str, columns: list, dates: list | None = None) -> panda
         columns(list): a list of columns that are included.
         dates(list): a list of those columns which are dates
     """
-    if dates:
-        df = pandas.read_csv(file, usecols=columns,
-                             parse_dates=dates)
-    else:
-        df = pandas.read_csv(file, usecols=columns)
+    # Keep date columns as strings. Wikidata uses 00 for an unknown month or day,
+    # which is not a real calendar date, so parse_dates cannot be used here.
+    df = pandas.read_csv(file, usecols=columns)
 
     # Making sure we make an actual copy of this DataFrame, as we intend to modify it.
     if 'name' in columns:
@@ -148,18 +162,17 @@ def flatfile_to_df(file: str, columns: list, dates: list | None = None) -> panda
         df = df.dropna(how='any')
         return df
     if dates:
-        edited_df = pandas.DataFrame()
-        # TODO: Figure out if the iterating here is correct:
-        # Each time, we should act on the original DF - removing a column, joining the new three in its place.
+        edited_df = removed_na_df
         for date in dates:
-            # Creates a new dataframe with 3 cols, each with a different number
-            split_date = removed_na_df[date].str.split('-', expand=True)
-            split_date = split_date.astype('Int64')
+            # Split this date, then continue from the frame that already has earlier splits.
+            split_date = edited_df[date].astype("string").str.split("-", expand=True)
+            split_date = split_date.reindex(columns=range(3))
+            split_date = split_date.astype("Int64")
             split_date = split_date.rename(
                 columns={0: f"{date}_year", 1: f"{date}_month", 2: f"{date}_day"})
-            edited_df = removed_na_df.drop(date, axis=1)
-            edited_df = edited_df.join(split_date)
-            edited_df = edited_df.replace({0: None})
+            # 00 in the source means that part of the date is unknown.
+            split_date = split_date.replace({0: None})
+            edited_df = edited_df.drop(columns=date).join(split_date)
         return edited_df
     else:
         return removed_na_df
@@ -167,7 +180,7 @@ def flatfile_to_df(file: str, columns: list, dates: list | None = None) -> panda
 
 def df_to_db(df: pandas.DataFrame, table: str):
     """
-    Wraps the to_sql pandas function to automatically connect with the MySQL DB.
+    Wraps the to_sql pandas function to automatically connect with the SQLite DB.
 
     Sets if_exists = 'append' as to never delete information from a table that already exists.
 
@@ -175,7 +188,7 @@ def df_to_db(df: pandas.DataFrame, table: str):
         df(pandas.DataFrame): the dataframe to be inserted
         table(str): the name of the table to be created or appended to.
     """
-    engine = create_engine(DB_URI, echo=True)
+    engine = _make_engine(echo=True)
     rows = df.to_sql(table, engine, if_exists='append',
                      index=False)
     print(rows, "rows added.")
