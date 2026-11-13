@@ -3,17 +3,16 @@
 -- to this database's own primary keys and copy the relationships across.
 -- Stored procedures are used to automate this process. Check schema.sql for the procedure.
 
-INSERT INTO `recorded_by`
+INSERT OR IGNORE INTO `recorded_by`
 SELECT `musicians`.`id` AS `musician_id`, `albums`.`id` AS `album_id`
 FROM `musicians`
 JOIN `temp_recorded_by`
 ON `musicians`.`entity_id` = `temp_recorded_by`.`musician_id`
-LEFT JOIN `albums`
+INNER JOIN `albums`
 ON `albums`.`entity_id` = `temp_recorded_by`.`album_id`
-ORDER BY `album_id`
-WHERE `albums`.`id` IS NOT NULL;
+ORDER BY `album_id`;
 
-INSERT INTO `recorded_on`
+INSERT OR IGNORE INTO `recorded_on`
 SELECT `albums`.`id` AS `album_id`, `labels`.`id` AS `label_id`
 FROM `albums`
 INNER JOIN `temp_recorded_on`
@@ -22,7 +21,7 @@ INNER JOIN `labels`
 ON `labels`.`entity_id` = `temp_recorded_on`.`label_id`
 ORDER BY `album_id`;
 
-INSERT INTO `played`
+INSERT OR IGNORE INTO `played`
 SELECT DISTINCT `musicians`.`id` AS `musician_id`, `instruments`.`id` AS `instrument_id`
 FROM `musicians`
 INNER JOIN `temp_played`
