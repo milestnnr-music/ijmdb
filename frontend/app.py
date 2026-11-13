@@ -126,7 +126,8 @@ def _run_and_show(
     try:
         df = run_query(sql, params)
     except Exception as exc:
-        st.error("Could not run query. Check that MySQL is running and secrets are set.")
+        st.error(
+            "Could not run query. Check that MySQL is running and secrets are set.")
         st.exception(exc)
         return
     _show_dataframe(df, entity_link=entity_link)
@@ -181,7 +182,8 @@ def _run_for_musician(
         )
         _run_and_show(MUSICIANS_BY_NAME, {"name": name})
     else:
-        params = {"name": name, "birth_year": birth_year, "musician_name": name}
+        params = {"name": name, "birth_year": birth_year,
+                  "musician_name": name}
         if extra_params:
             params.update(extra_params)
         _run_and_show(sql, params)
@@ -191,7 +193,8 @@ def render_musicians_tab() -> None:
     st.subheader("Musicians")
 
     st.markdown("#### Discography")
-    st.caption("Albums this musician is linked to on Wikidata (may be incomplete).")
+    st.caption(
+        "Albums this musician is linked to on Wikidata (may be incomplete).")
     name, birth_year = _musician_name_inputs("disc", "e.g. Miles Davis")
     if st.button("Run discography", key="btn_disc"):
         _run_for_musician(name, birth_year, DISCOGRAPHY)
@@ -199,13 +202,15 @@ def render_musicians_tab() -> None:
     st.divider()
     st.markdown("#### Record labels")
     st.caption("Labels from albums this musician was associated with.")
-    label_name, label_birth_year = _musician_name_inputs("labels", "e.g. Bill Evans")
+    label_name, label_birth_year = _musician_name_inputs(
+        "labels", "e.g. Bill Evans")
     if st.button("Find labels", key="btn_labels"):
         _run_for_musician(label_name, label_birth_year, LABELS_FOR_MUSICIAN)
 
     st.divider()
     st.markdown("#### Instruments played")
-    inst_name, inst_birth_year = _musician_name_inputs("inst", "e.g. Herbie Hancock")
+    inst_name, inst_birth_year = _musician_name_inputs(
+        "inst", "e.g. Herbie Hancock")
     if st.button("List instruments", key="btn_inst_mus"):
         _run_for_musician(inst_name, inst_birth_year, INSTRUMENTS_FOR_MUSICIAN)
 
@@ -222,7 +227,8 @@ def render_albums_tab() -> None:
         placeholder="e.g. Kind of Blue",
     )
     if st.button("Search albums", key="btn_album_name"):
-        _run_and_show(INDIVIDUAL_ALBUMS_STATS, {"name_pattern": f"%{album_name}%"})
+        _run_and_show(INDIVIDUAL_ALBUMS_STATS, {
+                      "name_pattern": f"%{album_name}%"})
 
     st.markdown("#### Albums released in a year")
     year = st.number_input(
@@ -332,7 +338,8 @@ def render_learn_more_tab() -> None:
     entity_link: EntityLinkTarget = (
         "wikipedia" if link_destination == "English Wikipedia" else "wikidata"
     )
-    name_query = st.text_input("Name", value="", key="learn_more_name", placeholder="e.g. Davis")
+    name_query = st.text_input(
+        "Name", value="", key="learn_more_name", placeholder="e.g. Davis")
     if st.button("Search", key="btn_learn_more"):
         term = name_query.strip()
         if not term:
@@ -340,7 +347,8 @@ def render_learn_more_tab() -> None:
             return
         params = {"name_pattern": f"%{term}%"}
         if entity_kind == "Musicians":
-            _run_and_show(LEARN_MORE_MUSICIANS, params, entity_link=entity_link)
+            _run_and_show(LEARN_MORE_MUSICIANS, params,
+                          entity_link=entity_link)
         elif entity_kind == "Albums":
             _run_and_show(LEARN_MORE_ALBUMS, params, entity_link=entity_link)
         else:
@@ -381,7 +389,8 @@ def main() -> None:
         render_wikidata_credit(compact=True)
 
     st.title("Internet Jazz Musician Database")
-    tabs = st.tabs(["Musicians", "Albums", "Stats", "Learn More", "Advanced SQL"])
+    tabs = st.tabs(["Musicians", "Albums", "Stats",
+                   "Learn More", "Advanced SQL"])
     with tabs[0]:
         render_musicians_tab()
     with tabs[1]:

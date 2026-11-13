@@ -9,7 +9,7 @@ WHERE a.id IN (
     WHERE rb.musician_id = (
         SELECT id FROM musicians
         WHERE name = :musician_name
-        AND (:birth_year IS NULL OR year_of_birth = :birth_year)
+        AND (:birth_year IS NULL OR birth_year = :birth_year)
         LIMIT 1
     )
 )
@@ -23,10 +23,10 @@ WHERE name = :name
 """
 
 MUSICIANS_BY_NAME = """
-SELECT id, name, year_of_birth, year_of_death
+SELECT id, name, birth_year, death_year
 FROM musicians
 WHERE name = :name
-ORDER BY year_of_birth
+ORDER BY birth_year
 """
 
 LABELS_FOR_MUSICIAN = """
@@ -41,7 +41,7 @@ WHERE l.id IN (
         WHERE rb.musician_id = (
             SELECT id FROM musicians
             WHERE name = :name
-            AND (:birth_year IS NULL OR year_of_birth = :birth_year)
+            AND (:birth_year IS NULL OR birth_year = :birth_year)
             LIMIT 1
         )
     )
@@ -105,7 +105,7 @@ INSTRUMENTS_FOR_MUSICIAN = """
 SELECT DISTINCT instrument
 FROM musician_stats
 WHERE name = :name
-AND (:birth_year IS NULL OR year_of_birth = :birth_year)
+AND (:birth_year IS NULL OR birth_year = :birth_year)
 ORDER BY instrument
 """
 
