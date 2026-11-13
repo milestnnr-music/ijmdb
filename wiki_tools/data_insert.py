@@ -22,7 +22,9 @@ Wraps the to_sql pandas function to automatically connect with the SQLite DB.
 """
 import csv
 from pathlib import Path
-
+import json
+import wiki_tools.web_queries as queries
+import wiki_tools.wiki_types as wiki_types
 import numpy as np
 import pandas
 from sqlalchemy import create_engine, event
@@ -136,7 +138,7 @@ def update_lists(file: str, field: str):
         print(f"Updated {len(updated_rows)} rows.")
 
 
-def flatfile_to_df(file: str, columns: list, dates: list | None = None) -> pandas.DataFrame:
+def flatfile_to_df(file: str, type: wiki_types.EntityTypes) -> pandas.DataFrame:
     """
     Take a flat file that contains all record information returned by Wikidata requests, return a pandas DataFrame.
 
@@ -144,39 +146,69 @@ def flatfile_to_df(file: str, columns: list, dates: list | None = None) -> panda
 
     Args:
         file(str): a file to be imported into a DF
-        columns(list): a list of columns that are included.
-        dates(list): a list of those columns which are dates
+        type(wiki_types.EntityTypes): the type of the item
     """
+    
     # Keep date columns as strings. Wikidata uses 00 for an unknown month or day,
     # which is not a real calendar date, so parse_dates cannot be used here.
+    columns = getattr(wiki_types, f"{type}Types").file_fields
     df = pandas.read_csv(file, usecols=columns)
 
     # Making sure we make an actual copy of this DataFrame, as we intend to modify it.
+    # If name in columns, this is a record table - remove any rows with a null name
     if 'name' in columns:
         removed_na_df = df[df['name'].notna()].copy()
     # For all of the values that are okay to be null, set them to None, as this will actually become NULL in the DB
     # Note that I needed to use NumPy because that is where pandas gets its datatypes.
         removed_na_df = removed_na_df.replace({np.nan: None})
+        removed_na_df = resolve_dates(removed_na_df, getattr(wiki_types, f"{type}Types").date_fields)
+        return removed_na_df
     else:
         # no name and no dates means it was a junction table - guard against any NaN's
-        df = df.dropna(how='any')
-        return df
-    if dates:
-        edited_df = removed_na_df
-        for date in dates:
-            # Split this date, then continue from the frame that already has earlier splits.
-            split_date = edited_df[date].astype("string").str.split("-", expand=True)
-            split_date = split_date.reindex(columns=range(3))
-            split_date = split_date.astype("Int64")
-            split_date = split_date.rename(
-                columns={0: f"{date}_year", 1: f"{date}_month", 2: f"{date}_day"})
-            # 00 in the source means that part of the date is unknown.
-            split_date = split_date.replace({0: None})
-            edited_df = edited_df.drop(columns=date).join(split_date)
-        return edited_df
-    else:
-        return removed_na_df
+        return df.dropna(how='any')
 
+def item_to_df(id: str, type: wiki_types.EntityTypes) -> pandas.DataFrame:
+    """
+    Takes a Wikidata ID and returns a DataFrame of the item.
+
+    Args:
+        id(str): the Wikidata ID of the item
+        type(wiki_types.EntityTypes): the type of the item
+
+    Returns:
+        pandas.DataFrame: the dataframe of the item
+    """
+    entities = queries.get_page_from_id(id) 
+    if entities:
+        entity_0 = entities[0]
+        item = queries.entity_to_item(entity_0, type)
+    else:
+        print(f"No entity found for ID: {id}")
+        return pandas.DataFrame()
+    
+    item_df = pandas.DataFrame(item)
+    item_df = resolve_dates(item_df, getattr(wiki_types, f"{type}Types").date_fields)
+    return item_df
+
+def resolve_dates(dataframe: pandas.DataFrame, date_cols: list) -> pandas.DataFrame:
+    """
+    Resolves dates into year, month, day columns.
+
+    Args:
+        dataframe(pandas.DataFrame): the dataframe to be resolved
+        date_cols(list): the columns that are dates
+
+    Returns:
+        pandas.DataFrame: the dataframe with the dates resolved
+    """
+    for date in date_cols:
+        split_date = dataframe[date].astype("string").str.split("-", expand=True)
+        split_date = split_date.reindex(columns=range(3))
+        split_date = split_date.astype("Int64")
+        split_date = split_date.rename(columns={0: f"{date}_year", 1: f"{date}_month", 2: f"{date}_day"})
+        split_date = split_date.replace({0: None})
+        dataframe = dataframe.drop(columns=date).join(split_date)
+    return dataframe
 
 def df_to_db(df: pandas.DataFrame, table: str):
     """

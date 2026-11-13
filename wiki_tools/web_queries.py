@@ -33,6 +33,7 @@ import csv
 from collections.abc import Iterator
 import requests
 import time
+import wiki_tools.wiki_types as wiki_types
 
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 """Wikidata linked data endpoint, MediaWiki"""
@@ -44,10 +45,6 @@ HEADERS = {
 }
 """Headers requrired for requests."""
 
-FILE_FIELDS = {
-    'musician': ['dob', 'dod', 'inst'],
-    'album': ['perfs', 'pubdate', 'label']
-}
 """Specific file fields needed for different objects."""
 
 
@@ -167,7 +164,7 @@ def get_page_from_id(ids: str) -> list[dict] | None:
     return entities_list
 
 
-def entity_to_item(entity: dict, mode: str) -> dict:
+def entity_to_item(entity: dict, mode: wiki_types.EntityTypes) -> dict:
     """
     Accepts a Wikidata Entry, returns the necessary properties as dict, where
     operating modes decide which properties are used. 
@@ -176,17 +173,8 @@ def entity_to_item(entity: dict, mode: str) -> dict:
 
     Args:
         entity(dict): a nested JSON object returned by MEDIAWIKI_ENDPOINT.
-        mode(str): the operating mode, "musician", "album" or "name_only". (Like for 'instruments' or 'labels'.)
+        mode(wiki_types.EntityTypes): the operating mode, "musician", "album" or "name_only". (Like for 'instruments' or 'labels'.)
     """
-    # Contains all of the Wikidata properties needed
-    PROPERTIES_TABLE = {
-        'dob': 'P569',
-        'dod': 'P570',
-        'inst': 'P1303',
-        'perfs': 'P175',
-        'pubdate': 'P577',
-        'label': 'P264'
-    }
     new_item = {}
 
     # Set the entity_id as the only 'key' of this dictionary, as grabbed by the list() function
@@ -203,16 +191,16 @@ def entity_to_item(entity: dict, mode: str) -> dict:
     new_item['name'] = entity[id]['labels']['en']['value']
 
     match mode:
-        case 'musician':
-            properties = FILE_FIELDS['musician']
-        case 'album':
-            properties = FILE_FIELDS['album']
+        case wiki_types.EntityTypes.MUSICIAN:
+            properties = wiki_types.MusicianTypes.file_fields
+        case wiki_types.EntityTypes.ALBUM:
+            properties = wiki_types.AlbumTypes.file_fields
         # We only really need the name and id of the label or instrument
-        case 'name-only':
+        case wiki_types.EntityTypes.NAMEONLY:
             return new_item
 
     # Hidden conversion to the actual Wikidata property strings
-    wiki_props = [PROPERTIES_TABLE[x] for x in properties]
+    wiki_props = [wiki_types.PROPERTIES_TABLE[x] for x in properties]
 
     for prop, w_prop in zip(properties, wiki_props):
         # Skip over date of death where not applicable (yet.)
@@ -265,7 +253,8 @@ def link_generator(file: str) -> Iterator:
         id_file.readline()
         # Store all of the lines in one big list, then each batch in a sublist, max size ~50 or 45 or so.
         entity_container = []
-        while True:
+        finished = False
+        while not finished:
             entity_batch = []
             while len(entity_batch) < 50:
                 # Either we get a EOF error or link will be = ''
@@ -274,13 +263,18 @@ def link_generator(file: str) -> Iterator:
                         new_entity = link_to_entity(link)
                         entity_batch.append(new_entity)
                     else:
-                        entity_container.append(entity_batch)
-                        print(f"Length: {len(entity_container)} batches.")
-                        return entity_container
+                        finished = True
+                        break
                 except EOFError:
-                    entity_container.append(entity_batch)
-                    return entity_container
+                    finished = True
+                    break
+            else:
+                # Batch filled to 50; keep reading the next one.
+                entity_container.append(entity_batch)
+                continue
+            # EOF: keep a trailing partial batch, including an empty one.
             entity_container.append(entity_batch)
+        print(f"Length: {len(entity_container)} batches.")
 
     for index in range(len(entity_container)):
         yield entity_container[index]
@@ -301,7 +295,7 @@ def convert_dates(date: str) -> str:
     return actual_date
 
 
-def write_to_file(items: list[dict], mode: str, outfile: str):
+def write_to_file(items: list[dict], mode: wiki_types.EntityTypes, outfile: str):
     """
     Write a set of Wikidata items to a CSV for DB upload.
 
@@ -312,9 +306,9 @@ def write_to_file(items: list[dict], mode: str, outfile: str):
         mode(str): the operating mode of this file, specifing the fields to be printed
         outfile(str): a file path to append items to.
     """
-    fieldnames = ['entity_id', 'name']
-    if mode != 'name-only':
-        fieldnames.extend(FILE_FIELDS[mode])
+    fieldnames = wiki_types.NameOnlyTypes.file_fields
+    if mode != wiki_types.EntityTypes.NAMEONLY:
+        fieldnames.extend(getattr(wiki_types, f"{mode}Types").file_fields)
     with open(outfile, 'a') as file:
         # Field names will be what ever is already in the dict
         writer = csv.DictWriter(file, fieldnames=fieldnames)
