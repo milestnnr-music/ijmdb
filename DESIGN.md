@@ -129,12 +129,11 @@ Finally I used the latest versions (as of October 2026) of all of these tools, i
   - Implementation of Juptyer Notebooks in VS Code
 - Python packages such as:
   - requests
-  - sqlalchemy (using pymysql)
+  - sqlalchemy
   - pandas
   - numpy
-- MySQL Server Community edition
-- Homebrew (to install and start MySQL Server)
-- DBeaver Community edition (for easy visualizing)
+- SQLite 3 (CLI and file-backed `ijmdb.db`)
+- DBeaver Community edition (for easy visualizing; optional)
 
 And for some questions and bug fixings:
 
@@ -146,8 +145,6 @@ Finally, for the web app I made:
 - streamlit
 - pandas
 - sqlalchemy
-- pymysql
-- python-dotenv
 
 (Made with Cursor Composer 2.5)
 
@@ -334,9 +331,9 @@ I did this work beforehand with some small workarounds:
 Rather than make the csv's with the actual records I wanted to insert redundant (an extra row for each instrument that a musician might have played), I decided to temporarily store these items as a string. I parsed these strings as lists and inserted them into csv's which acted more like junction tables; with redundancy, but only with the relationships between keys represented.
 
 These were then read into Pandas Dataframes for some final cleaning, extracting of data and error checking.
-These dataframes could then be uploaded directly to the database through the `Pandas.DataFrame.to_sql` function, using `SQLAlchemy` module and the `PyMySQL` driver to export directly from the dataframe to tables.
+These dataframes could then be uploaded directly to the database through the `Pandas.DataFrame.to_sql` function, using `SQLAlchemy` and a `sqlite:///` connection to `ijmdb.db`.
 
-I had a particularly hard time with dates - Wikipedia returned unknown parts of dates as '00' which caused loads of errors when trying to get these strings to be Pandas 'datetime' objects or MySQL 'DATE' data types. I split out these strings into separate years, months and days, letting those columns be NULL whenever there was no information. It may make a future front end more flexible in terms of displaying dates back to users - I probably should have done it earlier than the last step.
+I had a particularly hard time with dates - Wikipedia returned unknown parts of dates as '00' which caused loads of errors when trying to get these strings to be Pandas 'datetime' objects or strict SQL date types. I split out these strings into separate years, months and days, letting those columns be NULL whenever there was no information. It may make a future front end more flexible in terms of displaying dates back to users - I probably should have done it earlier than the last step.
 
 The tools used to do this work are in [`wiki_tools/data_insert.py`](wiki_tools/data_insert.py), again making heavy use of the _csv_ library along with _pandas_, _NumPy_ and _SQLAlchemy_ to do most of the heavy data lifting.
 
@@ -420,7 +417,7 @@ Splits out any dates into columns of year, month, day. All of datatype Int64, th
 def df_to_db(df: pandas.DataFrame, table: str)
 ```
 
-Wraps the to_sql pandas function to automatically connect with the MySQL DB.
+Wraps the to_sql pandas function to automatically connect with the SQLite database.
 
 Sets if_exists = 'append' as to never delete information from a table that already exists.
 
@@ -431,9 +428,9 @@ Sets if_exists = 'append' as to never delete information from a table that alrea
 
 ## Database Schema and Querying
 
-The database is implemented in MySQL. _(I found installing it via Homebrew was the easiest.)_
-The schema is laid out in [`schema.sql`](schema.sql) with all of the records, and junction tables that connect them. Stored procedures are also in this file.
-Common/useful queries on the database and the insertion statements are in [`queries.sql`](queries.sql). A dump of all backend information collected by the server is at [`dump.sql`](dump.sql).
+The database is implemented in **SQLite** as the file [`ijmdb.db`](ijmdb.db).
+The schema is laid out in [`schema.sql`](schema.sql) with all of the records, and junction tables that connect them. MySQL-style stored procedures were replaced with commented SQL equivalents at the bottom of `schema.sql`.
+Common/useful queries are in [`queries.sql`](queries.sql). Junction loads from temp tables are in [`inserts.sql`](inserts.sql).
 
 In addition to the tables in the entity relationship diagram at the top, I added some temporary tables to allow me to populate the junctions with my actual Database ID's rather than Wikidata's entity ID's.
 INSERT INTO statements were used on the temps to get them into the main tables.
@@ -451,23 +448,19 @@ Indexes as mentioned in the 'optimizations' section at the top are:
 - `albums_by_year`: on albums.name and albums.release_year
 - `musicians_by_birth_year`: on musicians.name and musicians.year_of_birth
 
-Some stored procedures help gain quick info on the data in aggregate and the db itself:
-
-- `table_counts()`: shows the COUNT(*) of all record tables
-- `name_counts(p_table_name, item_name)`: shows the amount of items in 'p_table_name' with 'item_name', useful for checking if a query will return just one or multiple items in the case of redundancies or common names.
-- `insert_from_tmp`: automates the process of inserting rows into junction tables from temporary tables - with the correct database codes. (see [`queries.sql`](queries.sql) for those inserts)
+SQLite has no stored procedures. The old MySQL helpers (`table_counts`, `name_count`, `insert_from_tmp`) are documented as plain SQL in comments in `schema.sql`; junction promotion uses [`inserts.sql`](inserts.sql).
 
 **I didn't see much use for triggers** as I didn't implement soft-deletions or anything of the like, but I'm sure that if I expand the DB and connect it to an app or website that I could run into a situation where I need it.
 
 ## Interacting
 
-I found that `DBeaver` - an open source database GUI was quite easy to setup on my server, and allowed me to see and interact with the data slightly faster. It's 'community' version is totally free, just as MySQL.
+I found that `DBeaver` - an open source database GUI was quite easy to setup, and allowed me to see and interact with the data slightly faster. Its community edition is free and works well with SQLite files.
 
 I definitely want to show this off to friends - so I decided to go modern and whip up a little tool for non-technical users to query the DB by asking Cursor Composer to help me make a frontend in `Streamlit`, a pure-Python web framework, used for data driven apps such as this.
 
 The entire subrepo for that app is in [`frontend`](frontend/). As I go - I'll probably replace the semi-slop [README](frontend/README.md) with my own reading of the code. Luckily Streamlit is a fairly straight-forward framework and quite readable.
 
-The subfolder is using a virtual environment using `venv` and can be started up using the included shell script [`start_ijmdb.sh`](frontend/start_ijmdb.sh). It boots up the MySQL server using `brew services run` (as I installed via Homebrew) and logs in a user that is specifcally for the app, and can only run SELECTs on the DB. Then it starts the environment and launches the web app using `streamlit run`.
+The subfolder uses a virtual environment (`venv`) and can be started with [`start_ijmdb.sh`](frontend/start_ijmdb.sh), which runs `streamlit run frontend/app.py` from the repo root (same layout as Streamlit Community Cloud). The app opens `ijmdb.db` via [`frontend/db.py`](frontend/db.py). Hosting steps are in [`DEPLOY.md`](DEPLOY.md).
 
 And you're off to the races! It's perfect for showing it off to my friends and family.
 

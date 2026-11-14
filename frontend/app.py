@@ -1,4 +1,4 @@
-"""IJMDB — local Streamlit demo for the Internet Jazz Musician Database."""
+"""IJMDB — Streamlit app for the Internet Jazz Musician Database."""
 
 import re
 from typing import Literal
@@ -127,7 +127,7 @@ def _run_and_show(
         df = run_query(sql, params)
     except Exception as exc:
         st.error(
-            "Could not run query. Check that MySQL is running and secrets are set.")
+            "Could not run query.")
         st.exception(exc)
         return
     _show_dataframe(df, entity_link=entity_link)

@@ -1,61 +1,38 @@
-# IJMDB Streamlit demo (local)
+# IJMDB Streamlit app
 
-Browser UI for querying the **ijmdb** MySQL database on this Mac.
+Browser UI for the **ijmdb** SQLite database (`../ijmdb.db` from this folder, resolved via `db.py` from the repo root).
 
-## First-time setup
+## Local run
 
-1. **MySQL** — database `ijmdb` loaded (see parent `dump.sql`). Start server:
-   ```bash
-   brew services start mysql
-   ```
-
-2. **Read-only app user** (if not already created):
-   ```sql
-   CREATE USER 'ijmdb_app'@'localhost' IDENTIFIED BY 'your_password';
-   GRANT SELECT ON ijmdb.* TO 'ijmdb_app'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
-
-3. **Secrets** — copy and edit:
-   ```bash
-   cp .streamlit/secrets.toml.example .streamlit/secrets.toml
-   ```
-
-4. **Python env**:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-## Run the app
+From the **repository root** (matches Streamlit Community Cloud):
 
 ```bash
-./start_ijmdb.sh
+./frontend/start_ijmdb.sh
 ```
 
-Or manually:
+Or, with a venv in `frontend/` or the repo root:
 
 ```bash
-source .venv/bin/activate
-streamlit run app.py
+streamlit run frontend/app.py
 ```
 
-Open **http://localhost:8501** in a browser.
+Open **http://localhost:8501**.
 
-## Try it out
+## Setup
 
-- Start MySQL and run `./start_ijmdb.sh` before handing over the machine.
-- Use fullscreen in the browser; disable sleep while demoing.
-- Quit with Ctrl+C in the Terminal window running Streamlit.
+1. **Database** — `ijmdb.db` at the repo root (see root [`README.MD`](../README.MD)).
+2. **Dependencies:** `pip install -r frontend/requirements.txt`
+3. **Python** — 3.12 recommended (see root `.python-version`).
 
-## Project layout
+## Community Cloud
+
+See [`DEPLOY.md`](../DEPLOY.md): main file `frontend/app.py`, no secrets required if `ijmdb.db` is in the repo.
+
+## Layout
 
 | File | Role |
 |------|------|
-| `app.py` | Streamlit UI (tabs + Advanced SQL) |
-| `db.py` | SQLAlchemy engine and `run_query` |
-| `queries/guided.py` | Parameterized SQL from `../queries.sql` |
-| `.streamlit/secrets.toml` | Local DB credentials (gitignored) |
-
-See **`plan.md`** for the plan used by Cursor agent, and it's step by step explanations.
+| `app.py` | Streamlit UI |
+| `db.py` | SQLAlchemy + SQLite path + `foreign_keys` pragma |
+| `queries/guided.py` | Parameterized SQL |
+| `requirements.txt` | Cloud/local pip deps |
