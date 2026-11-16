@@ -8,12 +8,12 @@ CREATE TABLE `musicians` (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     `entity_id` TEXT NOT NULL,
     `name` TEXT NOT NULL,
-    `year_of_birth` INTEGER,
-    `month_of_birth` INTEGER,
-    `day_of_birth` INTEGER,
-    `year_of_death` INTEGER,
-    `month_of_death` INTEGER,
-    `day_of_death` INTEGER
+    `birth_year` INTEGER,
+    `birth_month` INTEGER,
+    `birth_day` INTEGER,
+    `death_year` INTEGER,
+    `death_month` INTEGER,
+    `death_day` INTEGER
 );
 
 -- Albums:
@@ -141,7 +141,7 @@ ON `albums` (`name`, `release_year`);
 -- Indexing on birth year will make searches faster.
 
 CREATE INDEX `musicians_by_birth_year`
-ON `musicians` (`name`, `year_of_birth`);
+ON `musicians` (`name`, `birth_year`);
 
 -- Stored procedures (MySQL-only; SQLite equivalents):
 --

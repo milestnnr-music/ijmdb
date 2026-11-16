@@ -34,7 +34,7 @@ ORDER BY `release_year` DESC;
 -- There are occasional double names - "Bill Evans" is not only a pianist, but also a saxophonist!
 -- Let's figure out which is which. ID and date of birth should be good enough.
 
-SELECT `musicians`.`id`,`musicians`.`name`, `musicians`.`year_of_birth`, `instruments`.`name`
+SELECT `musicians`.`id`,`musicians`.`name`, `musicians`.`birth_year`, `instruments`.`name`
 FROM `musicians`
 LEFT JOIN `played`
 ON `played`.`musician_id` = `musicians`.`id`
@@ -58,7 +58,7 @@ WHERE `id` IN
             (SELECT `id`
              FROM `musicians`
              WHERE `name` = 'Bill Evans' AND
-                    `year_of_birth` = 1929)));
+                    `birth_year` = 1929)));
 
 -- The `instruments` table contains some seriously weird instruments.. (Including many I wasn't expecting.)
 -- I want to see the most common and least common instruments played in this dataset, for starters.

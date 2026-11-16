@@ -48,7 +48,7 @@ HEADERS = {
 """Specific file fields needed for different objects."""
 
 
-def get_batch_data(mode: str, infile: str, outfile: str) -> bool:
+def get_batch_data(mode: wiki_types.EntityTypes, infile: str, outfile: str) -> bool:
     """
     Processes batches of Wikidata entitites from the infile.
     Writes their data to the outfile. 
@@ -192,17 +192,14 @@ def entity_to_item(entity: dict, mode: wiki_types.EntityTypes) -> dict:
 
     match mode:
         case wiki_types.EntityTypes.MUSICIAN:
-            properties = wiki_types.MusicianTypes.file_fields
+            properties = wiki_types.MusicianTypes.wiki_properties
         case wiki_types.EntityTypes.ALBUM:
-            properties = wiki_types.AlbumTypes.file_fields
+            properties = wiki_types.AlbumTypes.wiki_properties
         # We only really need the name and id of the label or instrument
         case wiki_types.EntityTypes.NAMEONLY:
             return new_item
 
-    # Hidden conversion to the actual Wikidata property strings
-    wiki_props = [wiki_types.PROPERTIES_TABLE[x] for x in properties]
-
-    for prop, w_prop in zip(properties, wiki_props):
+    for prop, w_prop in properties.__dict__.items():
         # Skip over date of death where not applicable (yet.)
         if w_prop not in entity[id]['claims']:
             continue
@@ -303,14 +300,12 @@ def write_to_file(items: list[dict], mode: wiki_types.EntityTypes, outfile: str)
 
     Args:
         items(list[dict]): A list of items to be printed, each contained in a dict.
-        mode(str): the operating mode of this file, specifing the fields to be printed
+        mode(wiki_types.EntityTypes): the operating mode of this file, specifing the fields to be printed
         outfile(str): a file path to append items to.
     """
-    fieldnames = wiki_types.NameOnlyTypes.file_fields
-    if mode != wiki_types.EntityTypes.NAMEONLY:
-        fieldnames.extend(getattr(wiki_types, f"{mode}Types").file_fields)
+
+    fieldnames = getattr(wiki_types, f"{mode}Types").file_fields
     with open(outfile, 'a') as file:
-        # Field names will be what ever is already in the dict
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         for item in items:
             writer.writerow(item)
