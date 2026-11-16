@@ -16,6 +16,19 @@ class WikiProperties(Enum):
     PUBDATE = 'P577'
     LABEL = 'P264'
 
+
+class DatabaseTables(Enum):
+    MUSICIANS = 'musicians'
+    ALBUMS = 'albums'
+    LABELS = 'labels'
+    INSTRUMENTS = 'instruments'
+    RECORDED_BY = 'recorded_by'
+    RECORDED_ON = 'recorded_on'
+    PLAYED = 'played'
+    TEMP_RECORDED_BY = 'temp_recorded_by'
+    TEMP_RECORDED_ON = 'temp_recorded_on'
+    TEMP_PLAYED = 'temp_played'
+
 # Defining fields in addition to names and ids
 
 
@@ -24,6 +37,7 @@ class MusicianTypes(Enum):
                        'death': WikiProperties.DEATH, 'inst': WikiProperties.INST}
     file_fields = ['entity_id', 'name', 'birth', 'death', 'inst']
     date_fields = ['birth', 'death']
+    record_table = DatabaseTables.MUSICIANS
 
 
 class AlbumTypes(Enum):
@@ -31,13 +45,8 @@ class AlbumTypes(Enum):
                        'pubdate': WikiProperties.PUBDATE, 'label': WikiProperties.LABEL}
     file_fields = ['entity_id', 'name', 'perfs', 'pubdate', 'label']
     date_fields = ['pubdate']
+    record_table = DatabaseTables.ALBUMS
 
 
 class NameOnlyTypes(Enum):
     file_fields = ['entity_id', 'name']
-
-
-class FileColumns(Enum):
-    MUSICIAN = MusicianTypes.file_fields
-    ALBUM = AlbumTypes.file_fields
-    NAMEONLY = NameOnlyTypes.file_fields

@@ -22,15 +22,47 @@ Wraps the to_sql pandas function to automatically connect with the SQLite DB.
 """
 import csv
 from pathlib import Path
-import json
 import wiki_tools.web_queries as queries
 import wiki_tools.wiki_types as wiki_types
 import numpy as np
 import pandas
 from sqlalchemy import create_engine, event
+import argparse
+import sys
 
 _ROOT = Path(__file__).resolve().parents[1]
 DB_URI = f"sqlite:///{_ROOT / 'ijmdb.db'}"
+
+
+def main():
+    """A data insert script to be run at the commandline."""
+    parser = argparse.ArgumentParser(
+        prog="IJMDB data insert",
+    )
+    arg_group = parser.add_mutually_exclusive_group()
+    parser.add_argument('type', type=str)
+    arg_group.add_argument('-f', '--file', action="store_true", nargs=1)
+    arg_group.add_argument('-i', '--item', action="store_true", nargs=1)
+    arg_group.add_argument('-j', '--junction', action="store_true", nargs=2)
+
+    args = parser.parse_args()
+
+    if args.type not in wiki_types.EntityTypes:
+        sys.exit("Invalid type.")
+
+    if args.file:
+        type = args.type.title()
+        new_df = flatfile_to_df(args.file, args.type)
+        df_to_db(new_df, getattr(
+            wiki_types, f"{type}Types").record_table)
+    elif args.item:
+        # Define procedure for inserting an individual item
+        ...
+    elif args.junction:
+        # Define procedure for making a junction out of a table with lists
+        ...
+    else:
+        ...
 
 
 def _make_engine(*, echo: bool = False):
@@ -148,7 +180,7 @@ def flatfile_to_df(file: str, type: wiki_types.EntityTypes) -> pandas.DataFrame:
         file(str): a file to be imported into a DF
         type(wiki_types.EntityTypes): the type of the item
     """
-    
+
     # Keep date columns as strings. Wikidata uses 00 for an unknown month or day,
     # which is not a real calendar date, so parse_dates cannot be used here.
     columns = getattr(wiki_types, f"{type}Types").file_fields
@@ -161,11 +193,13 @@ def flatfile_to_df(file: str, type: wiki_types.EntityTypes) -> pandas.DataFrame:
     # For all of the values that are okay to be null, set them to None, as this will actually become NULL in the DB
     # Note that I needed to use NumPy because that is where pandas gets its datatypes.
         removed_na_df = removed_na_df.replace({np.nan: None})
-        removed_na_df = resolve_dates(removed_na_df, getattr(wiki_types, f"{type}Types").date_fields)
+        removed_na_df = resolve_dates(removed_na_df, getattr(
+            wiki_types, f"{type}Types").date_fields)
         return removed_na_df
     else:
         # no name and no dates means it was a junction table - guard against any NaN's
         return df.dropna(how='any')
+
 
 def item_to_df(id: str, type: wiki_types.EntityTypes) -> pandas.DataFrame:
     """
@@ -178,17 +212,19 @@ def item_to_df(id: str, type: wiki_types.EntityTypes) -> pandas.DataFrame:
     Returns:
         pandas.DataFrame: the dataframe of the item
     """
-    entities = queries.get_page_from_id(id) 
+    entities = queries.get_page_from_id(id)
     if entities:
         entity_0 = entities[0]
         item = queries.entity_to_item(entity_0, type)
     else:
         print(f"No entity found for ID: {id}")
         return pandas.DataFrame()
-    
+
     item_df = pandas.DataFrame(item)
-    item_df = resolve_dates(item_df, getattr(wiki_types, f"{type}Types").date_fields)
+    item_df = resolve_dates(item_df, getattr(
+        wiki_types, f"{type}Types").date_fields)
     return item_df
+
 
 def resolve_dates(dataframe: pandas.DataFrame, date_cols: list) -> pandas.DataFrame:
     """
@@ -202,13 +238,16 @@ def resolve_dates(dataframe: pandas.DataFrame, date_cols: list) -> pandas.DataFr
         pandas.DataFrame: the dataframe with the dates resolved
     """
     for date in date_cols:
-        split_date = dataframe[date].astype("string").str.split("-", expand=True)
+        split_date = dataframe[date].astype(
+            "string").str.split("-", expand=True)
         split_date = split_date.reindex(columns=range(3))
         split_date = split_date.astype("Int64")
-        split_date = split_date.rename(columns={0: f"{date}_year", 1: f"{date}_month", 2: f"{date}_day"})
+        split_date = split_date.rename(
+            columns={0: f"{date}_year", 1: f"{date}_month", 2: f"{date}_day"})
         split_date = split_date.replace({0: None})
         dataframe = dataframe.drop(columns=date).join(split_date)
     return dataframe
+
 
 def df_to_db(df: pandas.DataFrame, table: str):
     """
